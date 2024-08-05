@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 """ Module containing Amenity View """
 from api.v1.views import app_views
@@ -104,5 +103,3 @@ def link_amenity(place_id, amenity_id):
         place_obj.amenity_ids.append(amenity_obj.id)
     storage.save()
     return jsonify(amenity_obj.to_dict()), 201
-
-

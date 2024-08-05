@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 """ Module containing City View """
 from api.v1.views import app_views
@@ -117,4 +116,3 @@ def edit_city(city_id):
             setattr(city_obj, key, fields[key])
     city_obj.save()
     return jsonify(city_obj.to_dict()), 200
-

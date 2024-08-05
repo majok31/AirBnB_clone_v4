@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 """ Module containing Review View """
 from api.v1.views import app_views
@@ -129,4 +128,3 @@ def edit_review(review_id):
             setattr(review_obj, key, fields[key])
     review_obj.save()
     return jsonify(review_obj.to_dict()), 200
-

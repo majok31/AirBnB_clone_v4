@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 """Module containing views for Amenity objects """
 from api.v1.views import app_views
@@ -110,4 +109,3 @@ def update_amenity(amenity_id=None):
                 setattr(amenity_obj, key, fields[key])
     amenity_obj.save()
     return jsonify(amenity_obj.to_dict()), 200
-

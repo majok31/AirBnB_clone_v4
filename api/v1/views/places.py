@@ -1,4 +1,3 @@
-
 #!/usr/bin/python3
 """ Module containing Place View """
 from api.v1.views import app_views
@@ -170,4 +169,3 @@ def filter_places():
             del place.amenities
         places -= to_remove
     return jsonify([place.to_dict() for place in places])
-
