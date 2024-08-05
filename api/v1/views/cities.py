@@ -1,98 +1,120 @@
+
 #!/usr/bin/python3
-'''Contains the cities view for the API.'''
-from flask import jsonify, request
-from werkzeug.exceptions import NotFound, MethodNotAllowed, BadRequest
-
+""" Module containing City View """
 from api.v1.views import app_views
-from models import storage, storage_t
+from flask import jsonify, abort, request
+from models import storage
 from models.city import City
-from models.place import Place
-from models.review import Review
-from models.state import State
 
 
-@app_views.route('/states/<state_id>/cities', methods=['GET', 'POST'])
-@app_views.route('/cities/<city_id>', methods=['GET', 'DELETE', 'PUT'])
-def handle_cities(state_id=None, city_id=None):
-    '''The method handler for the cities endpoint.
-    '''
-    handlers = {
-        'GET': get_cities,
-        'DELETE': remove_city,
-        'POST': add_city,
-        'PUT': update_city,
-    }
-    if request.method in handlers:
-        return handlers[request.method](state_id, city_id)
-    else:
-        raise MethodNotAllowed(list(handlers.keys()))
+@app_views.route('/states/<string:state_id>/cities', methods=['GET'],
+                 strict_slashes=False)
+def get_cities(state_id):
+    """ Retrieves the list of all City objects of a State.
+
+        Args:
+            state_id (str): The UUID4 string representing a State object.
+
+        Returns:
+            List of dictionaries representing City objects in JSON format.
+            Raise 404 error if `state_id` is not linked to any State object.
+    """
+    state_obj = storage.get("State", state_id)
+    if state_obj is None:
+        abort(404)
+    cities = [city.to_dict() for city in state_obj.cities]
+    return jsonify(cities)
 
 
-def get_cities(state_id=None, city_id=None):
-    '''Gets the city with the given id or all cities in
-    the state with the given id.
-    '''
-    if state_id:
-        state = storage.get(State, state_id)
-        if state:
-            cities = list(map(lambda x: x.to_dict(), state.cities))
-            return jsonify(cities)
-    elif city_id:
-        city = storage.get(City, city_id)
-        if city:
-            return jsonify(city.to_dict())
-    raise NotFound()
+@app_views.route('/cities/<string:city_id>', methods=['GET'],
+                 strict_slashes=False)
+def get_city(city_id):
+    """ Retrieves a City object based on `city_id`.
+
+    Args:
+        city_id (str): The UUID4 string representing a City object.
+
+    Returns:
+        Dictionary represention of a City object in JSON format.
+        Raise 404 error if `city_id` is not linked to any City object.
+    """
+    city_obj = storage.get("City", city_id)
+    if city_obj is None:
+        abort(404)
+    return jsonify(city_obj.to_dict())
 
 
-def remove_city(state_id=None, city_id=None):
-    '''Removes a city with the given id.
-    '''
-    if city_id:
-        city = storage.get(City, city_id)
-        if city:
-            storage.delete(city)
-            if storage_t != "db":
-                for place in storage.all(Place).values():
-                    if place.city_id == city_id:
-                        for review in storage.all(Review).values():
-                            if review.place_id == place.id:
-                                storage.delete(review)
-                        storage.delete(place)
-            storage.save()
-            return jsonify({}), 200
-    raise NotFound()
+@app_views.route('/cities/<string:city_id>', methods=['DELETE'],
+                 strict_slashes=False)
+def delete_city(city_id):
+    """ Deletes a City object based on `city_id`.
+
+    Args:
+        city_id (str): The UUID4 string representing a City object.
+
+    Returns:
+        Returns an empty dictionary with the status code 200.
+        Raise 404 error if `city_id` is not linked to any City object.
+    """
+    city_obj = storage.get("City", city_id)
+    if city_obj is None:
+        abort(404)
+    city_obj.delete()
+    storage.save()
+    return jsonify({})
 
 
-def add_city(state_id=None, city_id=None):
-    '''Adds a new city.
-    '''
-    state = storage.get(State, state_id)
-    if not state:
-        raise NotFound()
-    data = request.get_json()
-    if type(data) is not dict:
-        raise BadRequest(description='Not a JSON')
-    if 'name' not in data:
-        raise BadRequest(description='Missing name')
-    data['state_id'] = state_id
-    city = City(**data)
-    city.save()
-    return jsonify(city.to_dict()), 201
+@app_views.route('/states/<string:state_id>/cities', methods=['POST'],
+                 strict_slashes=False)
+def add_city(state_id):
+    """ Creates a City object using `state_id` and HTTP body request fields.
+
+    Args:
+        state_id (str): The UUID4 string representing a State object.
+
+    Returns:
+        Returns the new City object as a  dictionary in JSON format
+        with the status code 200.
+        Raise 404 error if `state_id` is not linked to any State object.
+    """
+    state_obj = storage.get("State", state_id)
+    if state_obj is None:
+        abort(404)
+    if request.json is None:
+        return "Not a JSON", 400
+    fields = request.get_json()
+    if fields.get('name') is None:
+        return "Missing name", 400
+    fields['state_id'] = state_id
+    new_city = City(**fields)
+    new_city.save()
+    return jsonify(new_city.to_dict()), 201
 
 
-def update_city(state_id=None, city_id=None):
-    '''Updates the city with the given id.
-    '''
-    xkeys = ('id', 'state_id', 'created_at', 'updated_at')
-    if city_id:
-        city = storage.get(City, city_id)
-        if city:
-            data = request.get_json()
-            if type(data) is not dict:
-                raise BadRequest(description='Not a JSON')
-            for key, value in data.items():
-                if key not in xkeys:
-                    setattr(city, key, value)
-            city.save()
-            return jsonify(city.to_dict()), 200
-    raise NotFound()
+@app_views.route('/cities/<string:city_id>', methods=['PUT'],
+                 strict_slashes=False)
+def edit_city(city_id):
+    """ Edit a City object using `city_id` and HTTP body request fields.
+
+    Args:
+        city_id (str): The UUID4 string representing a City object.
+
+    Returns:
+        Returns the City object as a  dictionary in JSON format with the
+        status code 200.
+        Raise 404 error if `city_id` is not linked to any City object.
+    """
+    city_obj = storage.get("City", city_id)
+    if city_obj is None:
+        abort(404)
+    if request.json is None:
+        return "Not a JSON", 400
+    fields = request.get_json()
+    for key in fields:
+        if key in ['id', 'state_id', 'created_at', 'update_at']:
+            continue
+        if hasattr(city_obj, key):
+            setattr(city_obj, key, fields[key])
+    city_obj.save()
+    return jsonify(city_obj.to_dict()), 200
+
